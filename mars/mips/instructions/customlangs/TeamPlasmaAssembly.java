@@ -173,7 +173,7 @@ public class TeamPlasmaAssembly extends CustomAssembly{
                         String label = statement.getOriginalTokenList().get(1).getValue();
                         int targetAddress = Globals.program.getLocalSymbolTable().getAddressLocalOrGlobal(label);
                         if (targetAddress == -1){
-                            throw new ProcessingException(statement, "Label not found.");
+                            throw new ProcessingException(statement, "Label not found.\n");
                         }
                         Globals.instructionSet.processJump(targetAddress);
 
@@ -194,6 +194,24 @@ public class TeamPlasmaAssembly extends CustomAssembly{
                             throw new ProcessingException(statement, "Label not found.");
                         }
                         Globals.instructionSet.processJump(targetAddress);
+                }
+            }));
+
+    instructionList.add(
+        new BasicInstruction("miss $t1, 20, label",
+            "Mission: Set an immediate value as a target value to how many Pokemon you need to liberate until you can stop",
+            BasicInstructionFormat.I_BRANCH_FORMAT, 
+            "111100 fffff sssss tttttttttttttttt", // Opcode + register + immediate + Branch
+            new SimulationCode(){
+                public void simulate(ProgramStatement statement) throws ProcessingException{
+                    int[] operands = statement.getOperands();
+                    int registerValue = RegisterFile.getValue(operands[0]);
+                    int targetValue = operands[1];
+
+                    // Logic: Branch if NOT equal
+                if (registerValue != targetValue) {
+                    Globals.instructionSet.processBranch(operands[2]);
+            }
                 }
             }));
 
