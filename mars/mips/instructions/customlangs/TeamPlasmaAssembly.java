@@ -7,6 +7,7 @@
 
 public class TeamPlasmaAssembly extends CustomAssembly{
     private static int trainer = -1;
+    private static int success = 0;
     @Override
     public String getName(){
         return "Team Plasma Assembly";
@@ -101,6 +102,101 @@ public class TeamPlasmaAssembly extends CustomAssembly{
             }
         }
     }));
+
+    instructionList.add(
+        new BasicInstruction("bat", "Attempt to liberate a Pokemon by challenging a trainer to a battle", BasicInstructionFormat.R_FORMAT, 
+    "000000 00000 00000 00000 00000 000010", 
+    new SimulationCode(){
+        public void simulate(ProgramStatement statement) throws ProcessingException{
+            Random rand = new Random();
+            if (trainer == -1){
+                SystemIO.printString("Go look for a Trainer!\n");
+                return; 
+            }
+            else{
+                //Simulate the difficulty of a battle based on the trainer
+                // 90%(School Kid), 75%(Bug Catcher), 50%(Ace Trainer), 25%(Champion)
+                switch (RegisterFile.getValue(2)){ // 2 = register $v0
+                    case 0:
+                        // 90%
+                        if (rand.nextInt(100) < 90){
+                            success = 1;
+                            SystemIO.printString("You won!\n");
+                            break;
+                        } else {
+                            SystemIO.printString("You lost!\n");
+                            break;
+                        }
+                    case 1: 
+                        // 75%
+                        if(rand.nextInt(100) < 75){
+                            success = 1;
+                            SystemIO.printString("You won!\n");
+                            break;
+                        } else {
+                            SystemIO.printString("You lost!\n");
+                            break;
+                        }
+                    case 2:
+                        // 50%
+                        if (rand.nextInt(100) < 50){
+                            success = 1;
+                            SystemIO.printString("You won!\n");
+                            break;
+                        } else {
+                            SystemIO.printString("You lost!\n");
+                            break;
+                        }
+                    case 3:
+                        // 25%
+                        if (rand.nextInt(100) < 25){
+                            success = 1;
+                            SystemIO.printString("You won!\n");
+                            break;
+                        } else {
+                            SystemIO.printString("You lost!\n");
+                            break;
+                        }
+                }
+            }
+        }
+    }));
+    instructionList.add(
+        new BasicInstruction("libsuc label",
+            "Liberation Success: Jump to a label only if previous battle was won",
+            BasicInstructionFormat.I_BRANCH_FORMAT, 
+            "100000 00000 00000 ffffffffffffffff",
+            new SimulationCode(){
+                public void simulate(ProgramStatement statement) throws ProcessingException {
+                    // Checks if battle was successful
+                    if (success == 1){
+                        String label = statement.getOriginalTokenList().get(1).getValue();
+                        int targetAddress = Globals.program.getLocalSymbolTable().getAddressLocalOrGlobal(label);
+                        if (targetAddress == -1){
+                            throw new ProcessingException(statement, "Label not found.");
+                        }
+                        Globals.instructionSet.processJump(targetAddress);
+
+                        success = 0;
+                    }
+                }
+            }));
+    instructionList.add(
+        new BasicInstruction("jump label",
+            "Jump: Simply jumps to label unconditionally",
+            BasicInstructionFormat.I_BRANCH_FORMAT,
+            "111000 00000 00000 ffffffffffffffff",
+            new SimulationCode(){
+                public void simulate(ProgramStatement statement) throws ProcessingException{
+                     String label = statement.getOriginalTokenList().get(1).getValue();
+                        int targetAddress = Globals.program.getLocalSymbolTable().getAddressLocalOrGlobal(label);
+                        if (targetAddress == -1){
+                            throw new ProcessingException(statement, "Label not found.");
+                        }
+                        Globals.instructionSet.processJump(targetAddress);
+                }
+            }));
+
 
     }
 }
