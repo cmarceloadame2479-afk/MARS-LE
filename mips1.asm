@@ -2,6 +2,7 @@
 message: .asciiz "You liberated a pokemon!"
 .text
 
+enc
 lib $t1, 1
 lib $t1, 1
 lib $t1, 1
