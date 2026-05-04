@@ -197,115 +197,111 @@ public class TeamPlasmaAssembly extends CustomAssembly{
                 }
             }));
 
-    instructionList.add(
-        new BasicInstruction("miss $t1, 20, label",
-            "Mission: Set an immediate value as a target value to how many Pokemon you need to liberate until you can stop",
-            BasicInstructionFormat.I_BRANCH_FORMAT, 
-            "111100 fffff sssss tttttttttttttttt", // Opcode + register + immediate + Branch
-            new SimulationCode(){
-                public void simulate(ProgramStatement statement) throws ProcessingException{
-                    int[] operands = statement.getOperands();
-                    int registerValue = RegisterFile.getValue(operands[0]);
-                    int targetValue = operands[1];
+    // instructionList.add(
+    //     new BasicInstruction("miss $t1, 20, label",
+    //         "Mission: Set an immediate value as a target value to how many Pokemon you need to liberate until you can stop",
+    //         BasicInstructionFormat.I_BRANCH_FORMAT, 
+    //         "111100 fffff sssss tttttttttttttttt", // Opcode + register + immediate + Branch
+    //         new SimulationCode(){
+    //             public void simulate(ProgramStatement statement) throws ProcessingException{
+    //                 int[] operands = statement.getOperands();
+    //                 int registerValue = RegisterFile.getValue(operands[0]);
+    //                 int targetValue = operands[1];
 
-                    // Logic: Branch if NOT equal
-                if (registerValue != targetValue) {
-                    Globals.instructionSet.processBranch(operands[2]);
+    //                 // Logic: Branch if NOT equal
+    //             if (registerValue != targetValue) {
+    //                 Globals.instructionSet.processBranch(operands[2]);
+    //         }
+    //             }
+    //         }));
+
+    instructionList.add(
+    new BasicInstruction("grunt label",
+        "Display a BMP image stored at filename label",
+        BasicInstructionFormat.J_FORMAT,
+        "111111 ffffffffffffffffffffffffff",
+        new SimulationCode() {
+            public void simulate(ProgramStatement statement) throws ProcessingException {
+                try {
+                    String label = statement.getOriginalTokenList().get(1).getValue();
+                    int addr = Globals.program.getLocalSymbolTable()
+                                    .getAddressLocalOrGlobal(label);
+
+                    StringBuilder filename = new StringBuilder();
+                    char ch = (char) Globals.memory.getByte(addr);
+                    while (ch != 0) {
+                        filename.append(ch);
+                        addr++;
+                        ch = (char) Globals.memory.getByte(addr);
+                    }
+
+                    java.io.RandomAccessFile file =
+                        new java.io.RandomAccessFile(filename.toString(), "r");
+
+                        // bit amount
+                    byte[] header = new byte[54];
+                    file.readFully(header);
+
+                    int fileSize = ((header[5] & 0xFF) << 24) |
+                                   ((header[4] & 0xFF) << 16) |
+                                   ((header[3] & 0xFF) << 8)  |
+                                   (header[2] & 0xFF);
+
+                    int pixelOffset = ((header[13] & 0xFF) << 24) |
+                                      ((header[12] & 0xFF) << 16) |
+                                      ((header[11] & 0xFF) << 8)  |
+                                      (header[10] & 0xFF);
+
+                    int width = ((header[21] & 0xFF) << 24) |
+                                ((header[20] & 0xFF) << 16) |
+                                ((header[19] & 0xFF) << 8)  |
+                                (header[18] & 0xFF);
+
+                    int height = ((header[25] & 0xFF) << 24) |
+                                 ((header[24] & 0xFF) << 16) |
+                                 ((header[23] & 0xFF) << 8)  |
+                                 (header[22] & 0xFF);
+
+                    byte[] buffer = new byte[fileSize];
+                    file.seek(0);
+                    file.readFully(buffer);
+                    file.close();
+
+                    int fb = 0x10010000;
+                    int screenW = 256;
+                    int screenH = 256;
+
+                    int rowSize = (width * 3 + 3) & ~3;
+
+                    for (int y = 0; y < screenH; y++) {
+                        int srcY = (y * height) / screenH;
+                        srcY = height - srcY - 1;
+
+                        for (int x = 0; x < screenW; x++) {
+                            int srcX = (x * width) / screenW;
+
+                            int pixelIndex = pixelOffset +
+                                             srcY * rowSize +
+                                             srcX * 3;
+
+                            int b = buffer[pixelIndex] & 0xFF;
+                            int g = buffer[pixelIndex + 1] & 0xFF;
+                            int r = buffer[pixelIndex + 2] & 0xFF;
+
+                            int color = (r << 16) | (g << 8) | b;
+
+                            int addrFB = fb + ((y * screenW + x) * 4);
+                            Globals.memory.setWord(addrFB, color);
+                        }
+                    }
+
+                    SystemIO.printString("Image rendered!\n");
+
+                } catch (Exception e) {
+                    throw new ProcessingException(statement, e.getMessage());
+                }
             }
-                }
-            }));
-
-    instructionList.add(
-        new BasicInstruction("grunt label",
-            "Display a BMP image stored at filename label",
-            BasicInstructionFormat.I_BRANCH_FORMAT,
-            "101000 00000 00000 ffffffffffffffff",
-            new SimulationCode() {
-                public void simulate(ProgramStatement statement) throws ProcessingException {
-
-                    try {
-                        String label = statement.getOriginalTokenList().get(1).getValue();
-                        int addr = Globals.program.getLocalSymbolTable()
-                                        .getAddressLocalOrGlobal(label);
-
-                        StringBuilder filename = new StringBuilder();
-                        char ch = (char) Globals.memory.getByte(addr);
-                        while (ch != 0) {
-                            filename.append(ch);
-                            addr++;
-                            ch = (char) Globals.memory.getByte(addr);
-                        }
-
-                        java.io.RandomAccessFile file =
-                            new java.io.RandomAccessFile(filename.toString(), "r");
-
-                            // bit amount
-                        byte[] header = new byte[54];
-                        file.readFully(header);
-
-                        int fileSize = ((header[5] & 0xFF) << 24) |
-                                    ((header[4] & 0xFF) << 16) |
-                                    ((header[3] & 0xFF) << 8)  |
-                                    (header[2] & 0xFF);
-
-                        int pixelOffset = ((header[13] & 0xFF) << 24) |
-                                        ((header[12] & 0xFF) << 16) |
-                                        ((header[11] & 0xFF) << 8)  |
-                                        (header[10] & 0xFF);
-
-                        int width = ((header[21] & 0xFF) << 24) |
-                                    ((header[20] & 0xFF) << 16) |
-                                    ((header[19] & 0xFF) << 8)  |
-                                    (header[18] & 0xFF);
-
-                        int height = ((header[25] & 0xFF) << 24) |
-                                    ((header[24] & 0xFF) << 16) |
-                                    ((header[23] & 0xFF) << 8)  |
-                                    (header[22] & 0xFF);
-
-                        byte[] buffer = new byte[fileSize];
-                        file.seek(0);
-                        file.readFully(buffer);
-                        file.close();
-
-                        int fb = 0x10010000;
-                        int screenW = 256;
-                        int screenH = 256;
-
-                        int rowSize = (width * 3 + 3) & ~3;
-
-                        for (int y = 0; y < screenH; y++) {
-
-                            int srcY = (y * height) / screenH;
-                            srcY = height - srcY - 1;
-
-                            for (int x = 0; x < screenW; x++) {
-
-                                int srcX = (x * width) / screenW;
-
-                                int pixelIndex = pixelOffset +
-                                                srcY * rowSize +
-                                                srcX * 3;
-
-                                int b = buffer[pixelIndex] & 0xFF;
-                                int g = buffer[pixelIndex + 1] & 0xFF;
-                                int r = buffer[pixelIndex + 2] & 0xFF;
-
-                                int color = (r << 16) | (g << 8) | b;
-
-                                int addrFB = fb + ((y * screenW + x) * 4);
-
-                                Globals.memory.setWord(addrFB, color);
-                            }
-                        }
-
-                        SystemIO.printString("Image rendered!\n");
-
-                    }  catch (Exception e) {
-                        throw new ProcessingException(statement, e.getMessage());
-                     }
-                }
-            }));
+        }));
 
     }
 }

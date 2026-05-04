@@ -13,7 +13,7 @@ libsuc win
 tra lose
 tra newline
 jump noquit
-bmp picture
+grunt picture
 
 win:
 lib $t1, 1
